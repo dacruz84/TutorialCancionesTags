@@ -39,12 +39,12 @@ jobs:
         if: ${{ failure() }}
         env:
           MENSAJE_ERROR: Una o varias pruebas fallaron
-        run: echo "::set-output name=respuesta::${MENSAJE_ERROR}"
+        run: echo "respuesta=${MENSAJE_ERROR}" >> GITHUB_OUTPUT
       - name: Validar resultado sin errores
         if: ${{ success() }}
         env:
           MENSAJE_EXITO: Todas las pruebas fueron exitosas
-        run: echo "::set-output name=respuesta::${MENSAJE_EXITO}"
+        run: echo "respuesta=${MENSAJE_EXITO}" >> GITHUB_OUTPUT
       - name: Cálculo de cubrimiento
         id: cubrimiento
         run: |
@@ -59,7 +59,7 @@ jobs:
             exit 1
           fi
       - name: Merge feature en develop
-        if: env.keyword_found == 'true'
+        if: env.clave_encontrada == 'true'
         run: |
           git checkout develop
           git merge --no-ff ${{ github.ref_name }} --no-edit
