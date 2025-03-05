@@ -2,7 +2,10 @@
 [run]
 branch = True
 source = src
-# omit = bad_file.py
+omit =
+    src/modelo/*
+    src/recursos/*
+    src/vista/*
 
 [paths]
 source =
