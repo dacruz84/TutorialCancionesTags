@@ -18,12 +18,12 @@ jobs:
           else
             echo "clave_encontrada=false" >> $GITHUB_ENV
           fi
-      - name: Merge develop a feature
-        if: env.clave_encontrada == 'true'
-        run: |
-          git checkout ${{ github.ref_name }}
-          git pull origin develop --no-edit
-          git push origin ${{ github.ref_name }}
+      - name: Mezcla develop -> feature
+        uses: tukasz/direct-merge-action@master
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          source-branch: develop
+          target-branch: ${{ github.ref }}
       - name: Configuración de entorno de python
         uses: actions/setup-python@v5
         with:
@@ -58,9 +58,10 @@ jobs:
             echo "Coverage total insuficiente: $TOTAL_COVERAGE%"
             exit 1
           fi
-      - name: Merge feature en develop
+      - name: Mezcla feature -> develop
         if: env.clave_encontrada == 'true'
-        run: |
-          git checkout develop
-          git merge --no-ff ${{ github.ref_name }} --no-edit
-          git push origin develop
+        uses: tukasz/direct-merge-action@master
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          source-branch: ${{ github.ref }}
+          target-branch: develop
