@@ -1,28 +1,66 @@
-name: CI
-
-# Controls when the action will run. 
+name: Pruebas unitarias
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+    branches:
+      - "feature/**"
 jobs:
-  job1:
-    name: Pruebas
+  process-feature-branch:
+    name: push-feature
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout de repositorio
-      uses: actions/checkout@v2
-    - name: Configuración de entorno de python
-      uses: actions/setup-python@v2
-      with:
-          python-version: '3.7'
-    - name: Instalación de librerías y dependencias
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    - name: Correr pruebas
-      id: correr-pruebas
-      run: python -m unittest discover -s tests
+      - name: Checkout de repositorio
+        uses: actions/checkout@v4
+      - name: Verificar palabra clave en el commit
+        id: verificar_palabra_clave
+        run: |
+          if git log -1 --pretty=%B | grep -q "HISTORIA_TERMINADA"; then
+            echo "clave_encontrada=true" >> $GITHUB_ENV
+          else
+            echo "clave_encontrada=false" >> $GITHUB_ENV
+          fi
+      - name: Merge develop a feature
+        if: env.clave_encontrada == 'true'
+        run: |
+          git checkout ${{ github.ref_name }}
+          git pull origin develop --no-edit
+          git push origin ${{ github.ref_name }}
+      - name: Configuración de entorno de python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.8'
+      - name: Instalación de librerías y dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Correr pruebas unitarias
+        id: correr-pruebas
+        run: python -m unittest discover -s tests -v
+      - name: Validar resultado con errores
+        if: ${{ failure() }}
+        env:
+          MENSAJE_ERROR: Una o varias pruebas fallaron
+        run: echo "::set-output name=respuesta::${MENSAJE_ERROR}"
+      - name: Validar resultado sin errores
+        if: ${{ success() }}
+        env:
+          MENSAJE_EXITO: Todas las pruebas fueron exitosas
+        run: echo "::set-output name=respuesta::${MENSAJE_EXITO}"
+      - name: Cálculo de cubrimiento
+        id: cubrimiento
+        run: |
+          coverage run -m unittest discover -s tests -v
+          coverage report -m
+          coverage json
+          # Extraer el coverage general
+          TOTAL_COVERAGE=$(jq .totals.percent_covered coverage.json)
+          # Si el coverage general es menor al 90%, fallar
+          if (( $(echo "$TOTAL_COVERAGE < 90" | bc -l) )); then
+            echo "Coverage total insuficiente: $TOTAL_COVERAGE%"
+            exit 1
+          fi
+      - name: Merge feature en develop
+        if: env.keyword_found == 'true'
+        run: |
+          git checkout develop
+          git merge --no-ff ${{ github.ref_name }} --no-edit
+          git push origin develop
